@@ -8,10 +8,11 @@
 
 #import "RCTCustomActionSheet.h"
 
+#import "RCTConvert.h"
+#import "RCTLog.h"
+#import "RCTUtils.h"
 #import "RCTBridge.h"
 #import "RCTUIManager.h"
-#import "RCTSparseArray.h"
-#import "RCTConvert.h"
 
 @implementation RCTCustomActionSheet
 {
@@ -23,7 +24,7 @@
 RCT_EXPORT_MODULE()
 
 - (dispatch_queue_t)methodQueue {
-    return _bridge.uiManager.methodQueue;
+    return dispatch_get_main_queue();
 }
 
 - (NSDictionary *)constantsToExport {
@@ -37,83 +38,81 @@ RCT_EXPORT_MODULE()
 
 RCT_EXPORT_METHOD(showActionSheetWithOptions:(NSDictionary *)options callback:(RCTResponseSenderBlock)callback) {
     _callback = callback;
-    [_bridge.uiManager addUIBlock:^(RCTUIManager *uiManager, RCTSparseArray *viewRegistry) {
-        NSNumber *viewTag = options[@"node"];
-        UIView *view = viewRegistry[viewTag];
-        
-        NSString *title = options[@"title"];
-        NSArray *buttons = options[@"buttons"];
-        NSString *destructiveButtonTitle = options[@"destructiveButtonTitle"];
-        NSString *cancelButtonTitle = options[@"cancelButtonTitle"];
-        
-        NSMutableArray *otherButtonTitles = [NSMutableArray array];
-        for (int i = 0; i < buttons.count; i++) {
-            [otherButtonTitles addObject:buttons[i][@"title"]];
+    NSNumber *viewTag = options[@"node"];
+    UIView *view = [_bridge.uiManager viewForReactTag:viewTag];
+    
+    NSString *title = options[@"title"];
+    NSArray *buttons = options[@"buttons"];
+    NSString *destructiveButtonTitle = options[@"destructiveButtonTitle"];
+    NSString *cancelButtonTitle = options[@"cancelButtonTitle"];
+    
+    NSMutableArray *otherButtonTitles = [NSMutableArray array];
+    for (int i = 0; i < buttons.count; i++) {
+        [otherButtonTitles addObject:buttons[i][@"title"]];
+    }
+    
+    IBActionSheet *actionSheet = [[IBActionSheet alloc] initWithTitle:title
+                                                             delegate:self
+                                                    cancelButtonTitle:cancelButtonTitle
+                                               destructiveButtonTitle:destructiveButtonTitle
+                                               otherButtonTitlesArray:otherButtonTitles];
+    
+    if (options[@"buttonTextColor"]) {
+        [actionSheet setButtonTextColor:[RCTConvert UIColor:options[@"buttonTextColor"]]];
+    }
+    if (options[@"buttonBackgroundColor"]) {
+        [actionSheet setButtonBackgroundColor:[RCTConvert UIColor:options[@"buttonBackgroundColor"]]];
+    }
+    if (options[@"pressEffect"]) {
+        [actionSheet setButtonResponse:((NSNumber *)options[@"pressEffect"]).integerValue];
+    }
+    if (options[@"titleFont"]) {
+        [actionSheet setTitleFont:[RCTConvert UIFont:options[@"titleButtonFont"]]];
+    }
+    if (options[@"font"]) {
+        [actionSheet setFont:[RCTConvert UIFont:options[@"font"]]];
+    }
+    if (options[@"cancelButtonFont"]) {
+        [actionSheet setCancelButtonFont:[RCTConvert UIFont:options[@"cancelButtonFont"]]];
+    }
+    if (options[@"destructiveButtonFont"]) {
+        [actionSheet setDestructiveButtonFont:[RCTConvert UIFont:options[@"destructiveButtonFont"]]];
+    }
+    if (options[@"shouldCancelOnTouch"]) {
+        actionSheet.shouldCancelOnTouch = ((NSNumber *)options[@"shouldCancelOnTouch"]).boolValue;
+    }
+    if (options[@"blurBackground"]) {
+        actionSheet.blurBackground = ((NSNumber *)options[@"blurBackground"]).boolValue;
+    }
+    
+    for (int i = 0; i < buttons.count; i++) {
+        NSDictionary *button = buttons[i];
+        NSInteger index = i;
+        if (actionSheet.hasDestructiveButton) {
+            index = i + 1;
         }
-        
-        IBActionSheet *actionSheet = [[IBActionSheet alloc] initWithTitle:title
-                                                                 delegate:self
-                                                        cancelButtonTitle:cancelButtonTitle
-                                                   destructiveButtonTitle:destructiveButtonTitle
-                                                        otherButtonTitlesArray:otherButtonTitles];
-        
-        if (options[@"buttonTextColor"]) {
-            [actionSheet setButtonTextColor:[RCTConvert UIColor:options[@"buttonTextColor"]]];
+        if (button[@"textColor"]) {
+            [actionSheet setButtonTextColor:[RCTConvert UIColor:button[@"textColor"]]
+                           forButtonAtIndex:index];
         }
-        if (options[@"buttonBackgroundColor"]) {
-            [actionSheet setButtonBackgroundColor:[RCTConvert UIColor:options[@"buttonBackgroundColor"]]];
+        if (button[@"backgroundColor"]) {
+            [actionSheet setButtonBackgroundColor:[RCTConvert UIColor:button[@"backgroundColor"]]
+                                 forButtonAtIndex:index];
         }
-        if (options[@"pressEffect"]) {
-            [actionSheet setButtonResponse:((NSNumber *)options[@"pressEffect"]).integerValue];
+        if (button[@"highlightTextColor"]) {
+            [actionSheet setButtonHighlightTextColor:[RCTConvert UIColor:button[@"highlightTextColor"]]
+                                    forButtonAtIndex:index];
         }
-        if (options[@"titleFont"]) {
-            [actionSheet setTitleFont:[RCTConvert UIFont:options[@"titleButtonFont"]]];
+        if (button[@"highlightBackgroundColor"]) {
+            [actionSheet setButtonHighlightBackgroundColor:[RCTConvert UIColor:button[@"highlightBackgroundColor"]]
+                                          forButtonAtIndex:index];
         }
-        if (options[@"font"]) {
-            [actionSheet setFont:[RCTConvert UIFont:options[@"font"]]];
+        if (button[@"font"]) {
+            [actionSheet setFont:[RCTConvert UIFont:button[@"font"]] forButtonAtIndex:index];
         }
-        if (options[@"cancelButtonFont"]) {
-            [actionSheet setCancelButtonFont:[RCTConvert UIFont:options[@"cancelButtonFont"]]];
-        }
-        if (options[@"destructiveButtonFont"]) {
-            [actionSheet setDestructiveButtonFont:[RCTConvert UIFont:options[@"destructiveButtonFont"]]];
-        }
-        if (options[@"shouldCancelOnTouch"]) {
-            actionSheet.shouldCancelOnTouch = ((NSNumber *)options[@"shouldCancelOnTouch"]).boolValue;
-        }
-        if (options[@"blurBackground"]) {
-            actionSheet.blurBackground = ((NSNumber *)options[@"blurBackground"]).boolValue;
-        }
-        
-        for (int i = 0; i < buttons.count; i++) {
-            NSDictionary *button = buttons[i];
-            NSInteger index = i;
-            if (actionSheet.hasDestructiveButton) {
-                index = i + 1;
-            }
-            if (button[@"textColor"]) {
-                [actionSheet setButtonTextColor:[RCTConvert UIColor:button[@"textColor"]]
-                               forButtonAtIndex:index];
-            }
-            if (button[@"backgroundColor"]) {
-                [actionSheet setButtonBackgroundColor:[RCTConvert UIColor:button[@"backgroundColor"]]
-                                     forButtonAtIndex:index];
-            }
-            if (button[@"highlightTextColor"]) {
-                [actionSheet setButtonHighlightTextColor:[RCTConvert UIColor:button[@"highlightTextColor"]]
-                                        forButtonAtIndex:index];
-            }
-            if (button[@"highlightBackgroundColor"]) {
-                [actionSheet setButtonHighlightBackgroundColor:[RCTConvert UIColor:button[@"highlightBackgroundColor"]]
-                                              forButtonAtIndex:index];
-            }
-            if (button[@"font"]) {
-                [actionSheet setFont:[RCTConvert UIFont:button[@"font"]] forButtonAtIndex:index];
-            }
-        }
-        
-        [actionSheet showInView:view];
-    }];
+    }
+    
+    [actionSheet showInView:view];
 }
 
 #pragma mark - IBActionSheetDelegate Implementation

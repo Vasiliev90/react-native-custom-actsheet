@@ -1,14 +1,17 @@
 'use strict';
 
 var React = require('react-native');
-var NativeModules = require('NativeModules');
+var {
+  NativeModules,
+  processColor,
+} = React;
 
 var PressEffect = {
-  'Fades': NativeModules.CustomActionSheet.FadeOnPress,
-  'ReversesColors': NativeModules.CustomActionSheet.ReversesColorsOnPress,
-  'Shrinks': NativeModules.CustomActionSheet.ShrinksOnPress,
-  'Highlight': NativeModules.CustomActionSheet.HighlightOnPress,
-}
+  Fades: NativeModules.CustomActionSheet.FadesOnPress,
+  ReversesColors: NativeModules.CustomActionSheet.ReversesColorsOnPress,
+  Shrinks: NativeModules.CustomActionSheet.ShrinksOnPress,
+  Highlight: NativeModules.CustomActionSheet.HighlightOnPress,
+};
 
 class CustomActionSheet {
   constructor() {
@@ -16,8 +19,25 @@ class CustomActionSheet {
   }
 
   showActionSheetWithOptions(options, callback) {
-    options = Object.assign({node: 1}, options);
-    NativeModules.CustomActionSheet.showActionSheetWithOptions(options, callback);
+    let opts = {
+      ...{node: 1},
+      ...options,
+    };
+
+    opts.buttonTextColor = opts.buttonTextColor ? processColor(opts.buttonTextColor) : undefined;
+    opts.buttonBackgroundColor = opts.buttonBackgroundColor ? processColor(opts.buttonBackgroundColor) : undefined;
+
+    for (let i in opts.buttons) {
+      let btn = opts.buttons[i];
+      btn.textColor = btn.textColor ? processColor(btn.textColor) : undefined;
+      btn.backgroundColor = btn.backgroundColor ? processColor(btn.backgroundColor) : undefined;
+      btn.highlightTextColor = btn.highlightTextColor ? processColor(btn.highlightTextColor) : undefined;
+      btn.highlightBackgroundColor = btn.highlightBackgroundColor ? processColor(btn.highlightBackgroundColor) : undefined;
+    }
+
+    let cb = callback ? callback : () => {};
+
+    NativeModules.CustomActionSheet.showActionSheetWithOptions(opts, cb);
   }
 }
 
